@@ -1,0 +1,7 @@
+[server]
+# Disable file watcher to prevent Streamlit from scanning all transformers modules
+# (those modules require torchvision which is not installed, causing flood of warnings)
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false

@@ -1,0 +1,21 @@
+# تجاهل ملفات البايثون
+__pycache__/
+test.py
+app.py
+
+# تجاهل ملفات الـ PDF
+*.pdf
+
+# تجاهل ملفات الـ TXT ما عدا requirements.txt
+*.txt
+!requirements.txt
+
+# تجاهل ملفات الـ JSON
+*.json
+
+# تجاهل ملفات الـ LOG
+*.log
+
+# تجاهل ملفات الـ venv
+venv_translate/
+venv/
