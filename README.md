@@ -1,4 +1,4 @@
-# OmniTranslate Agent &nbsp;![Version](https://img.shields.io/badge/version-1.0.0-blue) ![Python](https://img.shields.io/badge/python-3.10%2B-green) ![License](https://img.shields.io/badge/license-MIT-orange)
+# OmniTranslate Agent &nbsp;![Version](https://img.shields.io/badge/version-1.1.0-blue) ![Python](https://img.shields.io/badge/python-3.10%2B-green) ![License](https://img.shields.io/badge/license-MIT-orange)
 
 > **AI-Powered Document Translator (LLaMA + NLLB)**
 >
@@ -364,6 +364,10 @@ See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 - Language normalization + fuzzy matching for typo tolerance
 - Session logging to `translation_log.json`
 - 50+ pre-mapped languages in `LANG_CODES`
+
+
+### v1.0.0 — 2026-04-06
+- Sending translations is now instant.
 
 ---
 
