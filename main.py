@@ -210,12 +210,17 @@ def main() -> None:
     # Read pages from the handover file (clean interface between phases)
     pages_to_translate = ModelOrchestrator.load_extraction(EXTRACTION_FILE)
 
+    # Clear output file before starting so it accumulates cleanly
+    if os.path.exists(OUTPUT_FILE):
+        os.remove(OUTPUT_FILE)
+
     try:
         translated_pages = ModelOrchestrator.translate_pages(
             pages_to_translate,
             source_language=src_lang,
             target_language=tgt_lang,
             progress_callback=_progress,
+            output_file=OUTPUT_FILE,
         )
     except ValueError as exc:
         # Language not found in NLLB
@@ -226,9 +231,8 @@ def main() -> None:
     # ── STEP 7: OUTPUT & LOGGING ──────────────────────────────────────────────
     _step(7, "Output & Logging")
 
-    # 7a — Save output.txt
-    _save_txt(translated_pages, OUTPUT_FILE)
-    print(f"  ✓ Translation saved to {OUTPUT_FILE}")
+    # 7a — Save output.txt (Already done incrementally)
+    print(f"  ✓ Translation incremental saving completed: {OUTPUT_FILE}")
 
     # 7b — Save PDF (only when input was a PDF)
     if input_type == "pdf" and doc:

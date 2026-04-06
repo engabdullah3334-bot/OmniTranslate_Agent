@@ -182,16 +182,24 @@ def unload() -> None:
     print("[NLLB Engine] Model unloaded and memory cleared.")
 
 
-def translate(text: str, source_lang: str, target_lang: str) -> str:
+def translate(text: str, source_lang: str, target_lang: str, output_file: str | None = None) -> str:
     """
     Translate `text` from `source_lang` to `target_lang`.
     Raises RuntimeError if load() has not been called first.
 
     Parameters
     ----------
-    text        : The text to translate.
-    source_lang : Human-readable name or NLLB code for the source language.
-    target_lang : Human-readable name or NLLB code for the target language.
+    text        : The text to translate (supports multi-line, formatting preserved).
+    source_lang : Human-readable name or NLLB BCP-47 code for the source language.
+    target_lang : Human-readable name or NLLB BCP-47 code for the target language.
+
+    Design notes
+    ------------
+    - Translates line-by-line to preserve original formatting (newlines, structure).
+    - Empty lines are passed through unchanged.
+    - vocab lookup and lang ID are computed ONCE outside the loop (performance).
+    - num_beams=1 (greedy search) is used per line for maximum speed.
+    - torch.no_grad() prevents gradient accumulation (saves VRAM).
     """
     if _model is None:
         raise RuntimeError(
@@ -201,30 +209,51 @@ def translate(text: str, source_lang: str, target_lang: str) -> str:
     src_code = resolve_lang_code(source_lang).strip()
     tgt_code = resolve_lang_code(target_lang).strip()
 
-    # 1. Set source language and tokenize
-    _tokenizer.src_lang = src_code
-    inputs = _tokenizer(
-        text, return_tensors="pt", truncation=True, max_length=512
-    ).to(_model.device)
-
-    # 2. Get target language token ID via full vocab scan
-    #    (only method that works for both NllbTokenizer and NllbTokenizerFast)
+    # ── Resolve language IDs once (outside the loop for performance) ──────────
     vocab = _tokenizer.get_vocab()
     if tgt_code not in vocab:
         raise ValueError(
             f"Unknown NLLB language code: '{tgt_code}'.\n"
             "Check LANG_CODES table in translator_engine.py or pass a valid NLLB BCP-47 code."
         )
-    target_lang_id = vocab[tgt_code]
+    target_lang_id    = vocab[tgt_code]
+    _tokenizer.src_lang = src_code
 
-    # 3. Generate translation
-    translated_tokens = _model.generate(
-        **inputs,
-        forced_bos_token_id=target_lang_id,
-        max_length=512,
-        num_beams=4,
-    )
-    return _tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+    # ── Line-by-line translation (preserves formatting) ───────────────────────
+    lines = text.split("\n")
+    translated_lines: list[str] = []
+
+    for line in lines:
+        if not line.strip():           # pass empty lines through unchanged
+            translated_lines.append("")
+            if output_file:
+                with open(output_file, "a", encoding="utf-8") as f:
+                    f.write("\n")
+            continue
+
+        inputs = _tokenizer(
+            line, return_tensors="pt", truncation=True, max_length=256
+        ).to(_model.device)
+
+        with torch.no_grad():          # no gradients needed → saves VRAM
+            output_tokens = _model.generate(
+                **inputs,
+                forced_bos_token_id=target_lang_id,
+                max_length=256,
+                num_beams=1,           # greedy search — fastest per line
+                do_sample=False,       # deterministic output
+            )
+
+        translated_line = _tokenizer.batch_decode(
+            output_tokens, skip_special_tokens=True
+        )[0]
+        translated_lines.append(translated_line)
+
+        if output_file:
+            with open(output_file, "a", encoding="utf-8") as f:
+                f.write(translated_line + "\n")
+
+    return "\n".join(translated_lines)
 
 #____ for testing ____
 if __name__ == "__main__":

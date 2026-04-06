@@ -264,6 +264,7 @@ class ModelOrchestrator:
         source_language: str,
         target_language: str,
         progress_callback: Callable[[int, int], None] | None = None,
+        output_file: str | None = None,
         **_ignored,   # absorbs extra keys from the analysis dict if unpacked
     ) -> list[dict]:
         """
@@ -292,12 +293,23 @@ class ModelOrchestrator:
             if not item["original_text"].strip():
                 item["translated_text"] = ""
                 continue
+                
+            if output_file:
+                with open(output_file, "a", encoding="utf-8") as f:
+                    f.write(f"--- Page {item['page_index']} ---\n")
+
             try:
                 item["translated_text"] = translator_engine.translate(
                     item["original_text"],
                     source_language,
                     target_language,
+                    output_file=output_file
                 )
+                
+                if output_file:
+                    with open(output_file, "a", encoding="utf-8") as f:
+                        f.write("\n\n")
+                        
                 logger.debug("Page %d translated.", item["page_index"])
             except Exception as exc:
                 logger.error("Page %d error: %s", item["page_index"], exc)
